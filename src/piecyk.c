@@ -26,15 +26,15 @@ struct hd44780_l_conf lcd_low_conf;
 #define		INTRO0			"piecyk v0.1"
 #define		INTRO1			"zaraz grzejemy"
 
-void init_lcd() {
-	DDRC = 0xff;
-
+inline void init_lcd() {
 	// RS and RW are connected to PORTB
+	DDRB = 1 | (1 << 2);
 	lcd_low_conf.rs_i = 2;
 	lcd_low_conf.rw_i = 0;
 	lcd_low_conf.rs_port = lcd_low_conf.rw_port = &PORTB;
 
 	// E and 4-bit data pins are connected to PORTD
+	DDRD = (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7);
 	lcd_low_conf.en_i = 7;
 	lcd_low_conf.db7_i = 6;
 	lcd_low_conf.db6_i = 5;
