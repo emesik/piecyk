@@ -1,0 +1,46 @@
+libcustomprocs: custom procedures for AVR MCUs - v1.1.0
+
+Author: Philippe Proulx (eeppeliteloop@gmail.com) - <http://eepp.ca/>
+Released: January 17th, 2011
+
+
+1 DESCRIPTION
+
+This library features a few useful procedures. Most of them are related to
+string manipulation as of this version.
+
+
+2 CONFIGURATION
+
+The following variable have to be defined in the shipped Makefile:
+
+	* MCU: your AVR MCU (e.g. "atmega16")
+	* F_CPU: your MCU physical clock frequency (e.g. "8000000UL")
+
+
+3 DOCUMENTATION
+
+Refer to header file "customprocs.h" for a description of functions arguments
+and what they actually do.
+
+Since the library uses AVR Libc busy-wait delays, you have to define F_CPU
+to the AVR MCU's clock frequency (Hz). A common way of doing this is defining
+it within the command-line, when calling GCC. For example, an 8,000,000 Hz
+MCU yields the following C flag:
+
+	-DF_CPU=8000000UL
+
+The "UL" suffix is important here since we are dealing with some big litteral.
+This is what is done in the shipped Makefile.
+
+
+4 CHANGELOG
+
+4.1 v1.1
+
+* Support for signed integer to ASCIIZ string
+* Improved performance for integer to string procedures
+
+4.2 v1.0
+
+* Initial release

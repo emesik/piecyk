@@ -1,0 +1,17 @@
+This license deals with the part of the software written by me, which is
+located in the src/ directory.
+
+The libraries in src/lib/ have different licenses. Refer to COPYING files
+there. In particular, I have used:
+
+    * hd44780-avr-tools
+      https://github.com/eepp/hd44780-avr-tools
+      author: Philippe Proulx
+      license: LGPL
+
+All portions of the software written by me are released to the public domain.
+You may use, copy, modify, redistribute, sell and do whatever you like with
+the software. You are not required to mention my name or the origin of the
+code you use. Have fun!
+
+2014, Michal Salaban <michal (at) salaban (dot) info>

@@ -1,0 +1,98 @@
+libhd44780: HD44780 LCD device driver for AVR MCUs - v1.1.0
+
+Author: Philippe Proulx (eeppeliteloop@gmail.com) - <http://eepp.ca/>
+Released: January 24th, 2011
+
+
+1 DESCRIPTION
+
+This library acts as a device driver for interfacing with HD44780-compatible
+LCD displays with any AVR MCU. It uses and thus requires AVR Libc
+<http://http://www.nongnu.org/avr-libc/>, the Free Software port of libc for
+AVR MCUs. HD44780 is an LCD display driver IC and an "industry standard"
+protocol for communicating with many LCD displays made by different
+manifacturers. This device driver implements all write functions as described
+in HD44780's datasheet.
+
+
+2 CONFIGURATION
+
+The following variables have to be defined in the shipped Makefile:
+
+	* MCU: your AVR MCU (e.g. "atmega16")
+	* F_CPU: your MCU physical clock frequency (e.g. "8000000UL")
+
+
+3 DOCUMENTATION
+
+Device driver functions are straightforward and do not need to be explained
+here. There is one device driver function for each HD44780 device write function
+described in HD44780's datasheet. Device driver functions names and arguments
+are obvious and are described in the header file, "hd44780_low.h".
+
+All device driver functions need a pointer to what is called an "HD44780
+configuration". This structure contains physical connection informations and
+a few other parameters. All fields should have a relevant value. If the device
+is to be used in 4-bit mode, DB3 down to DB0 ports and pin indexes do not need
+to be given any value. Assignation of an AVR port address to a variable can be
+done like this:
+
+	conf.rs_port = &PORTC;
+
+This last line assigns AVR port C to the device's RS pin. This means the
+device's RS pin is physically connected to port C of the AVR MCU used.
+
+The HD44780 configuration structure also contains line 1 and line 2 base
+addresses (DDRAM). 0 is often used as line 1 base address and 0x40 as line 2
+base address. Line 2 is optional, since some LCD displays only feature
+a single line. However, it should be noted that some single-line LCD displays
+are in fact "2-line" displays with, for example, character 0 at address
+0 and character 8 at address 0x40. This depends on the physical connections
+between the driver IC and the liquid crystals. You should consult your
+specific LCD display's datasheet in order to know what base addresses to use.
+
+Finally, the HD44780 configuration has a data length attribute which is used
+when communicating with the target device. This value may either be
+HD44780_L_FS_DL_8BIT or HD44780_L_FS_DL_4BIT, and must be set (just as the
+other structure attributes) before initializing the device.
+
+You should use appropriate bit definitions (defined in the header) as much as
+possible when calling device driver functions. For example, bit definition
+HD44780_L_CDS_RL_RIGHT may be used when calling function hd44780_l_cds. 
+
+As the device driver uses AVR Libc busy-wait delays, you have to define F_CPU
+to the AVR MCU's clock frequency (Hz). A common way of doing this is defining
+it within the command-line, when calling GCC. For example, an 8,000,000 Hz
+MCU yields the following C flag:
+
+	-DF_CPU=8000000UL
+
+The "UL" suffix is important here since we are dealing with some big litteral.
+This is what is done in the shipped Makefile.
+
+It is the user's responsability to put the data direction (with DDRs) of
+AVR pins connected to the device into output mode. Usually, an HD44780 LCD
+device will have its data pins (DB7 down to DB0) in high-Z as long as the EN
+and R/W pins stay low. You may thus drive another device with those pins, but
+at your own risks.
+
+
+4 CHANGELOG
+
+4.1 v1.1
+
+* Device driver entirely rewritten
+* All device pins may now be on independent AVR ports and pin indexes
+* All text and comments are in English
+* Support for both 4-bit and 8-bit modes
+
+4.2 v1.0
+
+* Initial release
+
+
+5 TODO
+
+* Optimize for speed
+* Test device driver on different HD44780 implementations
+* Add HD44780 read functions (CGRAM/DDRAM and busy flag reading)

@@ -1,0 +1,54 @@
+# Sources:
+C_SRC=hd44780fw.c
+H_SRC=hd44780fw.h
+
+# Target MCU
+MCU=
+F_CPU=
+
+# Target library:
+TARGET_LIB=libhd44780fw.a
+
+# Additional includes:
+INC=
+
+# Configuration:
+HEXFORMAT=ihex
+OPTLEVEL=s
+
+# Tools:
+CC=avr-gcc
+OBJCOPY=avr-objcopy
+OBJDUMP=avr-objdump
+SIZE=avr-size
+RM=rm -f
+AR=avr-ar
+
+# Shorts:
+O_FILES=$(subst .c,.o,$(C_SRC))
+
+# C flags:
+CFLAGS=-I. $(INC) -g -mmcu=$(MCU) -O$(OPTLEVEL) \
+	-fpack-struct -fshort-enums \
+	-funsigned-bitfields -funsigned-char \
+	-Wall \
+	-DF_CPU=$(F_CPU)
+
+# Archiver flags:
+ARFLAGS=-rcs
+
+# Phony targets:
+.PHONY: clean
+
+# Archive target:
+$(TARGET_LIB): $(O_FILES) $(H_SRC)
+	$(AR) $(ARFLAGS) $@ $(O_FILES)	
+
+# Objects from C files:
+%.o : %.c
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+# Clean target:
+clean:
+	$(RM) $(TARGET_LIB) $(O_FILES)
+

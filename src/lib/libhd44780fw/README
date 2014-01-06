@@ -1,0 +1,76 @@
+libhd44780fw: HD44780 LCD framework AVR MCUs - v1.1.0
+
+Author: Philippe Proulx (eeppeliteloop@gmail.com) - <http://eepp.ca/>
+Released: January 17th, 2011
+
+
+1 DESCRIPTION
+
+This is libhd44780fw, an easy way to interface with any HD44780-compatible
+LCD display with AVR MCUs. It makes use of libhd44780, the low-level driver, and
+libcustomprocs, a collection of custom procedures for AVR MCUs.
+
+
+2 CONFIGURATION
+
+The following variables have to be defined in the shipped Makefile:
+
+	* MCU: your AVR MCU (e.g. "atmega16")
+	* F_CPU: your MCU physical clock frequency (e.g. "8000000UL")
+	* INC: path to header files of libhd44780 and libcustomprocs with GCC
+	       include flags (e.g. "-I../libhd44780/ -I../libcustomprocs/")
+
+
+3 DOCUMENTATION
+
+The first thing to do to use libhd44780fw is to fill an HD44780 low-level
+configuration structure. The latter contains informations about physical
+connections and other device properties. Please refer to libhd44780's README to
+understand what is needed.
+
+The framework HD44780 configuration structure may after be filled. Not every
+field has to be filled by user. The following ones are required:
+
+	* total_chars: total number of characters on the device (e.g. a
+	               16 * 2 display contains 32 characters)
+	* font: device font (use libhd44780 bit definitions here)
+	* lines: number of lines on device (use libhd44780 bit definitions here)
+	* low_conf: pointer to previously filled HD44780 low-level conf.
+
+The framework and device may now be initialized by calling hd44780fw_init with
+your framework HD44780 configuration. The device should display nothing at all
+and is waiting for further commands.
+
+Framework functions are straightforward and their arguments are well explained
+in the header file "hd44780fw.h".
+
+As the device driver uses AVR Libc busy-wait delays, you have to define F_CPU
+to the AVR MCU's clock frequency (Hz). A common way of doing this is defining
+it within the command-line, when calling GCC. For example, an 8,000,000 Hz
+MCU yields the following C flag:
+
+	-DF_CPU=8000000UL
+
+The "UL" suffix is important here since we are dealing with some big litteral.
+This is what is done in the shipped Makefile.
+
+It is the user's responsability to put the data direction (with DDRs) of
+AVR pins connected to the device into output mode.
+
+
+4 CHANGELOG
+
+4.1 v1.1
+
+* stdlib and stdio are not used anymore (custom procedures are used instead)
+* complete support for 16-bit and 8-bit signed and unsigned integers
+  concatenation
+
+4.2 v1.0
+
+* Initial release
+
+
+5 TODO
+
+* More optimization for size
