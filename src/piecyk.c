@@ -1,22 +1,30 @@
-//#include <stdio.h>
-
 #include <hd44780_low.h>
 #include <hd44780fw.h>
 
-// The LCD stuff
+// The LCD configs
 struct hd44780fw_conf lcd_conf;
 struct hd44780_l_conf lcd_low_conf;
 
-int lcd_put(char ch, FILE* fh) {
-	if (ch == '\n') {
-		hd44780fw_clear(&lcd_conf);
-		
-		return 0;
-	}
-	hd44780fw_cat_char(&lcd_conf, ch);
-	
-	return 0;
-}
+/*
+	The LCD structure during normal operation
+	   0123456789abcdef
+
+	0  Temp   Min   Max
+	1  -20C  *20C  *20C
+
+	         ^-----^-- shows when the value is being edited
+
+*/
+#define		HEADER_IDX		0x00
+#define		CUR_VAL_IDX		0x10
+#define		MIN_EDIT_IDX	0x16
+#define		MIN_VAL_IDX		0x17
+#define		MAX_EDIT_IDX	0x1c
+#define		MAX_VAL_IDX		0x1d
+
+#define		HEADER			"Temp   Min   Max"
+#define		INTRO0			"piecyk v0.1"
+#define		INTRO1			"zaraz grzejemy"
 
 void init_lcd() {
 	DDRC = 0xff;
@@ -44,16 +52,11 @@ void init_lcd() {
 	lcd_conf.lines = HD44780_L_FS_N_DUAL;
 
 	hd44780fw_init(&lcd_conf);
-	hd44780fw_clear(&lcd_conf);
-	
-	stdout = fdevopen(lcd_put, NULL);
+	hd44780fw_write(&lcd_conf, INTRO0, 0, 1);
+	hd44780fw_write(&lcd_conf, INTRO0, 0x10, 0);
 }
 
 int main() {
 	init_lcd();
-
-	printf("piecyk v0.99");
-	printf("zaraz grzejemy...");
-
 	return 0;
 }

@@ -8,6 +8,7 @@ CC=avr-gcc
 OBJCOPY=avr-objcopy
 OBJDUMP=avr-objdump
 AVRDUDE=avrdude
+AVRSIZE=avr-size
 
 LIBS=hd44780fw customprocs hd44780
 LIBS_PATH=$(foreach n, $(LIBS), ./lib/lib$(n)/lib$(n).a)
@@ -17,16 +18,19 @@ INC=-I $(addprefix -I./lib/lib,$(LIBS))
 CFLAGS=-c -I $(INC) -g -mmcu=$(MCU) -Os -Wall -DF_CPU=$(F_CPU)
 LDFLAGS=-mmcu=$(MCU) $(LIBS_LINK)
 
-all: $(LIBS_PATH) compile elf hex
+all: $(LIBS_PATH) compile elf hex size
 
 compile:
 	$(CC) $(CFLAGS) $(NAME).c -o $(NAME).o
 
-elf:
+elf: compile
 	$(CC) $(LDFLAGS) $(NAME).o $(LIBS_LINK) -o $(NAME).elf
 
-hex:
+hex: elf
 	$(OBJCOPY) -j .text -j .data -O ihex $(NAME).elf $(NAME).hex
+
+size: elf
+	$(AVRSIZE) $(NAME).elf
 
 write:
 	$(AVRDUDE) -c $(PROGRAMMER_ID) -p $(MCU) -e -U flash:w:$(NAME).hex
