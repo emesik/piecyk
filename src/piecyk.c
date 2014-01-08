@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 
 #include <hd44780_low.h>
@@ -12,10 +13,19 @@
 #define		INVALID_TEMP		-128	// mordor
 int8_t *samples;	// one byte per sample, will allocate later
 unsigned int samples_idx = 0;
+uint8_t buffer_filled = 0;
+#ifdef DEBUG
+volatile int last_adcval;
+#endif
+
+#define		MIN_VALID_TEMP	0
+#define		MAX_VALID_TEMP	50
+uint8_t temp_min = 15, temp_max = 25;
 
 // The LCD configs
 struct hd44780fw_conf lcd_conf;
 struct hd44780_l_conf lcd_low_conf;
+volatile uint8_t display_needs_refresh = 0;
 
 /*
  *	The LCD desired structure during normal operation
@@ -28,6 +38,7 @@ struct hd44780_l_conf lcd_low_conf;
  *
  */
 #define		HEADER_IDX		0x00
+#define		GATHER_IDX		0x10
 #define		CUR_VAL_IDX		0x11
 #define		MIN_EDIT_IDX	0x16
 #define		MIN_VAL_IDX		0x17
@@ -69,6 +80,8 @@ inline void init_display()
 	hd44780fw_init(&lcd_conf);
 	hd44780fw_write(&lcd_conf, INTRO0, 0, HD44780FW_WR_CLEAR_BEFORE);
 	hd44780fw_write(&lcd_conf, INTRO1, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
+
+	display_needs_refresh = 1;
 }
 
 inline void init_analog_temp()
@@ -84,16 +97,12 @@ inline void init_analog_temp()
 	ADMUX = (1 << REFS0) | (1 << REFS1) | (1 << MUX2) | (1 << MUX0);
 	// enable ADC, set 128 prescaler for 8MHz mode
 	ADCSRA |= (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
-	// set other pins as output
+	// set other pins as output and set high state
 	DDRB = ~(1 << PC5);
+	PORTC |= ~(1 << PC5);
 	// create buffer for samples and empty it
 	samples = malloc(SAMPLE_BUFFER_SIZE * sizeof(int8_t));
 	for (unsigned int i = 0; i < SAMPLE_BUFFER_SIZE; i++) *(samples + i) = INVALID_TEMP;
-}
-
-inline void init_keypad()
-{
-	DDRD &= ~((1 << PD2) | (1 << PD3) | (1 << PD4));
 }
 
 inline void read_temp()
@@ -120,6 +129,9 @@ inline void read_temp()
 	 *
 	 */
 	*(samples + samples_idx++) = (int8_t)((adcval >> 2) + ((adcval & 2) >> 1));
+#ifdef DEBUG
+	last_adcval = adcval;
+#endif
 
 	// cycle buffer
 	if (samples_idx >= SAMPLE_BUFFER_SIZE) samples_idx = 0;
@@ -130,9 +142,11 @@ int get_avg_temp()
 	unsigned int counted = SAMPLE_BUFFER_SIZE;
 	long sum = 0;
 
+	buffer_filled = 1;
 	for (unsigned int i = 0; i < SAMPLE_BUFFER_SIZE; i++) {
 		if (*(samples + i) == INVALID_TEMP) {
 			counted--;
+			buffer_filled = 0;
 			continue;
 		}
 		sum += *(samples + i);
@@ -140,44 +154,130 @@ int get_avg_temp()
 	return sum / counted;
 }
 
-void display_temp()
-{
-	char *buf = NULL;
-	buf = itoa(get_avg_temp(), malloc(4), 10);
-	hd44780fw_write(&lcd_conf, buf, CUR_VAL_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+#define		KEY_EDIT	(1 << PD2)
+#define		KEY_DOWN	(1 << PD3)
+#define		KEY_UP		(1 << PD4)
+#define		KEYS_ALL	(KEY_EDIT | KEY_DOWN | KEY_UP)
+
+#define		EDIT_NONE		0
+#define		EDIT_MIN		1
+#define		EDIT_MAX		2
+#define		EDIT_INVALID	3
+volatile uint8_t edit_mode = EDIT_NONE;
 #ifdef DEBUG
-	// Write the samples counter to the display, just after "Temp"
-	buf = itoa(samples_idx, buf, 10);
-	hd44780fw_write(&lcd_conf, buf, 4, HD44780FW_WR_NO_CLEAR_BEFORE);
+volatile uint8_t kbd_state_old = 0, kbd_state;
 #endif
-	free(buf);
+
+ISR(TIMER0_OVF_vect)
+{
+#ifndef DEBUG
+	static uint8_t kbd_state_old = 0, kbd_state;
+#endif
+	static uint8_t needs_reaction = 0, reacted_state = 0;
+
+	// Switches lower the pin state, so we use negative value
+	kbd_state = ~PIND & KEYS_ALL;
+
+	/*
+	 * Debouncing, as in:
+	 * http://mikrokontrolery.blogspot.com/2011/03/epp-eliminacja-drgan-stykow-omicronns.html
+	 *
+	 */
+	if ((kbd_state == kbd_state_old) && (kbd_state != reacted_state)) {
+		needs_reaction = 1;
+		reacted_state = kbd_state;
+	}
+
+	kbd_state_old = kbd_state;
+
+	// React to the keypad state
+	if (!needs_reaction) return;
+	if (kbd_state & KEY_EDIT) {
+		// this is not atomic, so we use a temporary var
+		uint8_t _edit_mode = edit_mode;
+		_edit_mode++;
+		if (_edit_mode == EDIT_INVALID) _edit_mode = EDIT_NONE;
+		edit_mode = _edit_mode;
+	} else if (kbd_state & KEY_DOWN) {
+		if ((edit_mode == EDIT_MIN) && (temp_min > MIN_VALID_TEMP)) temp_min--;
+		if ((edit_mode == EDIT_MAX) && (temp_max > MIN_VALID_TEMP) &&
+				(temp_max > temp_min)) temp_max--;
+	} else if (kbd_state & KEY_UP) {
+		if ((edit_mode == EDIT_MIN) && (temp_min < MAX_VALID_TEMP) &&
+				(temp_min < temp_max)) temp_min++;
+		if ((edit_mode == EDIT_MAX) && (temp_max < MAX_VALID_TEMP)) temp_max++;
+	}
+
+	needs_reaction = 0;
+	display_needs_refresh = 1;
 }
 
 inline void refresh_display()
 {
+	char *buf = malloc(4);
 	// Write the template strings to the display
 	hd44780fw_write(&lcd_conf, HEADER, 0, HD44780FW_WR_NO_CLEAR_BEFORE);
 	hd44780fw_write(&lcd_conf, VALUES, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
 	// Update values
-	display_temp();
+	if (buffer_filled)
+		hd44780fw_write(&lcd_conf, " ", GATHER_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+	else
+		hd44780fw_write(&lcd_conf, "=", GATHER_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+	hd44780fw_write(&lcd_conf, itoa(get_avg_temp(), buf, 10),
+			CUR_VAL_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+	hd44780fw_write(&lcd_conf, itoa(temp_min, buf, 10),
+			MIN_VAL_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+	hd44780fw_write(&lcd_conf, itoa(temp_max, buf, 10),
+			MAX_VAL_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+#ifdef DEBUG
+	// Write the samples counter to the display, just after "Temp"
+	hd44780fw_write(&lcd_conf, itoa(samples_idx, buf, 10),
+			4, HD44780FW_WR_NO_CLEAR_BEFORE);
+	// Write the last sample to the display, just after current temp
+	hd44780fw_write(&lcd_conf, itoa(last_adcval, buf, 10),
+			0x14, HD44780FW_WR_NO_CLEAR_BEFORE);
+#endif
+	if (edit_mode == EDIT_MIN)
+		hd44780fw_write(&lcd_conf, "*", MIN_EDIT_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+	if (edit_mode == EDIT_MAX)
+		hd44780fw_write(&lcd_conf, "*", MAX_EDIT_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+#ifdef DEBUG
+	hd44780fw_write(&lcd_conf, itoa(kbd_state, buf, 10),
+			0xb, HD44780FW_WR_NO_CLEAR_BEFORE);
+#endif
+	display_needs_refresh = 0;
+	free(buf);
+}
+
+inline void init_keypad()
+{
+	DDRD &= ~KEYS_ALL;
+	PORTD |= KEYS_ALL;
+
+	// use internal clock, 256 prescaler
+	TCCR0 |= (1 << CS02);
+
+	// enable timer overflow interrupt
+	TIMSK |= (1 << TOIE0);
 }
 
 int main()
 {
 	init_display();
 	init_analog_temp();
+	init_keypad();
+	sei();
 	for (unsigned int lcx = 0;; lcx++) {
-		read_temp();
-		_delay_ms(500);
-#ifdef DEBUG
-		refresh_display();
-#else
-		// Refresh display every 10 samples
-		if (lcx == 10) {
-			refresh_display();
-			lcx = 0;
+		_delay_ms(50);
+		if (!(lcx & 7)) {
+			// read temp every 8 cycles
+			read_temp();
 		}
-#endif
+
+		// refresh when needed or every 64 cycles
+		if (display_needs_refresh || (lcx & 0x3f)) {
+			refresh_display();
+		}
 	}
 	return 0;
 }
