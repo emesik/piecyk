@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
@@ -37,13 +38,13 @@ volatile uint8_t display_needs_refresh = 0;
  *	         ^-----^-- indicates the value is being edited
  *
  */
-#define		HEADER_IDX		0x00
-#define		GATHER_IDX		0x10
-#define		CUR_VAL_IDX		0x11
-#define		MIN_EDIT_IDX	0x16
-#define		MIN_VAL_IDX		0x17
-#define		MAX_EDIT_IDX	0x1c
-#define		MAX_VAL_IDX		0x1d
+#define		ROW2			0x10
+#define		GATHER_X		0x00
+#define		CUR_VAL_X		0x01
+#define		MIN_EDIT_X		0x06
+#define		MIN_VAL_X		0x07
+#define		MAX_EDIT_X		0x0c
+#define		MAX_VAL_X		0x0d
 
 #define		HEADER			"Temp   Min   Max"
 #define		VALUES			"   C     C     C"
@@ -214,22 +215,35 @@ ISR(TIMER0_OVF_vect)
 
 inline void refresh_display()
 {
-	char *buf = malloc(4);
-	// Write the template strings to the display
-	hd44780fw_write(&lcd_conf, HEADER, 0, HD44780FW_WR_NO_CLEAR_BEFORE);
-	hd44780fw_write(&lcd_conf, VALUES, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
+	char *val_buf = malloc(0x11), *buf = malloc(4);
+	size_t s = 0;
+	memcpy(val_buf, VALUES, 0x11);	// add terminal \0
 	// Update values
 	if (buffer_filled)
-		hd44780fw_write(&lcd_conf, " ", GATHER_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+		*(val_buf + GATHER_X) =  ' ';
 	else
-		hd44780fw_write(&lcd_conf, "=", GATHER_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
-	hd44780fw_write(&lcd_conf, itoa(get_avg_temp(), buf, 10),
-			CUR_VAL_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
-	hd44780fw_write(&lcd_conf, itoa(temp_min, buf, 10),
-			MIN_VAL_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
-	hd44780fw_write(&lcd_conf, itoa(temp_max, buf, 10),
-			MAX_VAL_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
+		*(val_buf + GATHER_X) =  '=';
+	itoa(get_avg_temp(), buf, 10);
+	s = strlen(buf);
+	memcpy(val_buf + CUR_VAL_X + (2-s), buf, s);
+	itoa(temp_min, buf, 10);
+	s = strlen(buf);
+	memcpy(val_buf + MIN_VAL_X + (2-s), buf, s);
+	itoa(temp_max, buf, 10);
+	s = strlen(buf);
+	memcpy(val_buf + MAX_VAL_X + (2-s), buf, s);
+	if (edit_mode == EDIT_MIN)
+		*(val_buf + MIN_EDIT_X) = '*';
+	else
+		*(val_buf + MIN_EDIT_X) = ' ';
+	if (edit_mode == EDIT_MAX)
+		*(val_buf + MAX_EDIT_X) = '*';
+	else
+		*(val_buf + MAX_EDIT_X) = ' ';
 #ifdef DEBUG
+	// Write keypad state to the display, just after "Min"
+	hd44780fw_write(&lcd_conf, itoa(kbd_state, buf, 10),
+			0xb, HD44780FW_WR_NO_CLEAR_BEFORE);
 	// Write the samples counter to the display, just after "Temp"
 	hd44780fw_write(&lcd_conf, itoa(samples_idx, buf, 10),
 			4, HD44780FW_WR_NO_CLEAR_BEFORE);
@@ -237,16 +251,12 @@ inline void refresh_display()
 	hd44780fw_write(&lcd_conf, itoa(last_adcval, buf, 10),
 			0x14, HD44780FW_WR_NO_CLEAR_BEFORE);
 #endif
-	if (edit_mode == EDIT_MIN)
-		hd44780fw_write(&lcd_conf, "*", MIN_EDIT_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
-	if (edit_mode == EDIT_MAX)
-		hd44780fw_write(&lcd_conf, "*", MAX_EDIT_IDX, HD44780FW_WR_NO_CLEAR_BEFORE);
-#ifdef DEBUG
-	hd44780fw_write(&lcd_conf, itoa(kbd_state, buf, 10),
-			0xb, HD44780FW_WR_NO_CLEAR_BEFORE);
-#endif
 	display_needs_refresh = 0;
+	// Write the strings to the display
+	hd44780fw_write(&lcd_conf, HEADER, 0, HD44780FW_WR_NO_CLEAR_BEFORE);
+	hd44780fw_write(&lcd_conf, val_buf, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
 	free(buf);
+	free(val_buf);
 }
 
 inline void init_keypad()
