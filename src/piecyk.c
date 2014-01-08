@@ -39,7 +39,7 @@ struct hd44780_l_conf lcd_low_conf;
 
 char *values_buffer = NULL;
 
-inline void init_lcd() {
+inline void init_display() {
 	// pins connected to PORTB
 	DDRB |= (1 << 1) | (1 << 2) | (1 << 6) | (1 << 7);
 	lcd_low_conf.rs_i = 2;
@@ -68,6 +68,8 @@ inline void init_lcd() {
 	hd44780fw_init(&lcd_conf);
 	hd44780fw_write(&lcd_conf, INTRO0, 0, HD44780FW_WR_CLEAR_BEFORE);
 	hd44780fw_write(&lcd_conf, INTRO1, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
+
+	values_buffer = malloc(17);
 }
 
 inline void init_analog_temp() {
@@ -134,14 +136,15 @@ inline void update_display() {
 
 
 int main() {
-	init_lcd();
+	init_display();
 	init_analog_temp();
-	values_buffer = malloc(17);
-	_delay_ms(500);
-	while (1) {
+	for (unsigned int lcx = 0;; lcx++) {
 		read_temp();
-		update_display();
 		_delay_ms(100);
+		if (lcx == 10) {
+			update_display();
+			lcx = 0;
+		}
 	}
 	return 0;
 }
