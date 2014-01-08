@@ -3,12 +3,12 @@ This is my first project based on AVR microcontroller (and any MCU in general).
 It is used to keep track of temperature and control the heating system at home.
 
 General principles:
- * piecyk measures temperature using analog sensor,
+ * piecyk measures temperature using LM35 analog sensor,
  * it has MIN and MAX temperature defined,
  * whenever current temperature drops to MIN or below, the heating is turned on,
  * whenever current temperature rises to MAX or over, the heating is turned off,
  * such a switch is being done using a NPN transistor to enable +12V DC circuit,
  * same circuit is used to power the controller itself, stepped down to +5V DC,
  * both MIN and MAX temperatures are programmable by MODE, UP and DOWN buttons,
- * an LCD displays all these three values,
+ * a 2x16 LCD displays all these three values,
  * a LED turns on together with the heating.
