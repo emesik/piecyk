@@ -15,7 +15,7 @@ LIBS_PATH=$(foreach n, $(LIBS), ./lib/lib$(n)/lib$(n).a)
 LIBS_LINK=$(foreach n, $(LIBS), -L./lib/lib$(n) -l$(n))
 INC=-I $(addprefix -I./lib/lib,$(LIBS))
 
-CFLAGS=-c -I $(INC) -g -mmcu=$(MCU) -Os -Wall -DF_CPU=$(F_CPU)
+CFLAGS=-c -I $(INC) -g -mmcu=$(MCU) -Os -Wall -DF_CPU=$(F_CPU) -std=c99
 LDFLAGS=-mmcu=$(MCU) $(LIBS_LINK)
 
 all: $(LIBS_PATH) compile elf hex size
@@ -32,7 +32,7 @@ hex: elf
 size: elf
 	$(AVRSIZE) $(NAME).elf
 
-write:
+write: hex
 	$(AVRDUDE) -c $(PROGRAMMER_ID) -p $(MCU) -e -U flash:w:$(NAME).hex
 
 .PHONY: $(LIBS_PATH)
