@@ -4,11 +4,11 @@
 #include <hd44780_low.h>
 #include <hd44780fw.h>
 
-#define		SAMPLE_BUFFER_SIZE	120
-#define		INVALID_TEMP		-300	// mordor
+#define		SAMPLE_BUFFER_SIZE	240
+#define		INVALID_TEMP		-128	// mordor
 
 // The temperatures will be stored here
-int *samples;
+int8_t *samples;
 unsigned int samples_idx = 0;
 
 // The LCD configs
@@ -87,12 +87,17 @@ inline void init_analog_temp() {
 	// set other pins as output
 	DDRB = ~(1 << PC5);
 	// create buffer for samples and empty it
-	samples = malloc(SAMPLE_BUFFER_SIZE * sizeof(int));
+	samples = malloc(SAMPLE_BUFFER_SIZE * sizeof(int8_t));
 	for (unsigned int i = 0; i < SAMPLE_BUFFER_SIZE; i++) *(samples + i) = INVALID_TEMP;
+}
+
+inline void init_keypad() {
+	DDRD &= ~((1 << PD2) | (1 << PD3) | (1 << PD4));
 }
 
 inline void read_temp() {
 	int adcval;
+	int8_t temp;
 	// start conversion
 	ADCSRA |= (1 << ADSC);
 	// spinlock until finished
@@ -104,19 +109,24 @@ inline void read_temp() {
 	// Vout = 0V + (t * 0.01V)
 	// As we have 2.56V as Aref and 1024 values of 10-bit resolution,
 	// the only thing we need is to divide the result by 4.
-	*(samples + samples_idx++) = adcval >> 2;
+	temp = (int8_t) (adcval >> 2);
+	// round
+	if ((adcval & 3) >= 2) temp++;
+
+	*(samples + samples_idx++) = temp;
 	if (samples_idx >= SAMPLE_BUFFER_SIZE) samples_idx = 0;
 }
 
 int get_avg_temp() {
-	unsigned int counted = 0;
-	int sum = 0;
+	unsigned int counted = SAMPLE_BUFFER_SIZE;
+	long sum = 0;
 
 	for (unsigned int i = 0; i < SAMPLE_BUFFER_SIZE; i++) {
-		if (*(samples + i) != INVALID_TEMP) {
-			sum += *(samples + i);
-			counted++;
+		if (*(samples + i) == INVALID_TEMP) {
+			counted--;
+			continue;
 		}
+		sum += *(samples + i);
 	}
 	return sum / counted;
 }
