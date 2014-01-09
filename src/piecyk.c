@@ -32,7 +32,7 @@ uint8_t heating_state = 0;
 // the permanent storage of programmed temps and last state
 uint8_t EEMEM perm_temp_min = 15;
 uint8_t EEMEM perm_temp_max = 25;
-uint8_t EEMEM perm_heating_state = 0;
+uint8_t EEMEM perm_heating_state = 1;
 uint8_t need_store = 0;
 
 inline void restore_parameters()
@@ -86,21 +86,21 @@ volatile uint8_t display_need_refresh = 0;
 inline void init_display()
 {
 	// pins connected to PORTB
-	DDRB |= (1 << 1) | (1 << 2) | (1 << 6) | (1 << 7);
+	DDRB |= 1 | (1 << 1) | (1 << 2) | (1 << 7);
 	lcd_low_conf.rs_i = 2;
 	lcd_low_conf.rw_i = 1;
-	lcd_low_conf.en_i = 6;
-	lcd_low_conf.db4_i = 7;
+	lcd_low_conf.en_i = 0;
+	lcd_low_conf.db7_i = 7;
 	lcd_low_conf.rs_port = lcd_low_conf.rw_port =
-		lcd_low_conf.en_port = lcd_low_conf.db4_port = &PORTB;
+		lcd_low_conf.en_port = lcd_low_conf.db7_port = &PORTB;
 
 	// pins connected to PORTD
 	DDRD |= (1 << 5) | (1 << 6) | (1 << 7);
-	lcd_low_conf.db5_i = 5;
-	lcd_low_conf.db6_i = 6;
-	lcd_low_conf.db7_i = 7;
-	lcd_low_conf.db5_port = lcd_low_conf.db6_port =
-		lcd_low_conf.db7_port = &PORTD;
+	lcd_low_conf.db4_i = 7;
+	lcd_low_conf.db5_i = 6;
+	lcd_low_conf.db6_i = 5;
+	lcd_low_conf.db4_port = lcd_low_conf.db5_port =
+		lcd_low_conf.db6_port = &PORTD;
 
 	lcd_low_conf.line1_base_addr = 0x00;
 	lcd_low_conf.line2_base_addr = 0x40;
@@ -187,9 +187,9 @@ int get_avg_temp()
 	return sum / counted;
 }
 
-#define		KEY_EDIT	(1 << PD2)
+#define		KEY_EDIT	(1 << PD4)
 #define		KEY_DOWN	(1 << PD3)
-#define		KEY_UP		(1 << PD4)
+#define		KEY_UP		(1 << PD2)
 #define		KEYS_ALL	(KEY_EDIT | KEY_DOWN | KEY_UP)
 
 #define		EDIT_NONE		0
@@ -306,14 +306,14 @@ inline void init_keypad()
 
 inline void turn_heating(uint8_t on)
 {
-	if (on) PORTB |= (1 << PB0);
-	else PORTB &= ~(1 << PB0);
+	if (on) PORTD |= (1 << PD0);
+	else PORTD &= ~(1 << PD0);
 }
 
 inline void init_heating()
 {
-	DDRB |= (1 << PB0);
-	PORTB &= ~(1 << PB0);
+	DDRD |= (1 << PD0);
+	PORTD &= ~(1 << PD0);
 	turn_heating(heating_state);
 }
 
