@@ -306,14 +306,13 @@ inline void init_keypad()
 
 inline void turn_heating(uint8_t on)
 {
-	if (on) PORTD |= (1 << PD0);
-	else PORTD &= ~(1 << PD0);
+	if (on) PORTD &= ~(1 << PD0);
+	else PORTD |= (1 << PD0);
 }
 
 inline void init_heating()
 {
 	DDRD |= (1 << PD0);
-	PORTD &= ~(1 << PD0);
 	turn_heating(heating_state);
 }
 
