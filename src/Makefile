@@ -40,7 +40,7 @@ size: elf
 
 write:
 	$(AVRDUDE) -c $(PROGRAMMER_ID) -p $(MCU) -e -U flash:w:$(NAME).hex
-	$(AVRDUDE) -c $(PROGRAMMER_ID) -p $(MCU) -e -U eeprom:w:$(NAME).ee.hex
+	$(AVRDUDE) -c $(PROGRAMMER_ID) -p $(MCU) -D -U eeprom:w:$(NAME).ee.hex
 
 .PHONY: $(LIBS_PATH)
 $(LIBS_PATH):

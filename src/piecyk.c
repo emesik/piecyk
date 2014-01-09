@@ -11,7 +11,11 @@
  * few seconds. For the heating we need very slow responsiveness, so the samples
  * will be gathered in a table and averaged.
  */
+#ifdef DEBUG
+#define		SAMPLE_BUFFER_SIZE	10
+#else
 #define		SAMPLE_BUFFER_SIZE	120		// remember this chip has 1K only
+#endif
 #define		INVALID_TEMP		-128	// mordor
 int8_t *samples;	// one byte per sample, will allocate later
 unsigned int samples_idx = 0;
@@ -22,13 +26,14 @@ volatile int last_adcval;
 
 #define		MIN_VALID_TEMP	0
 #define		MAX_VALID_TEMP	50
-uint8_t temp_min = MIN_VALID_TEMP, temp_max = MAX_VALID_TEMP;
+uint8_t temp_min = 15, temp_max = 25;
 uint8_t heating_state = 0;
 
 // the permanent storage of programmed temps and last state
 uint8_t EEMEM perm_temp_min = 15;
 uint8_t EEMEM perm_temp_max = 25;
 uint8_t EEMEM perm_heating_state = 0;
+uint8_t need_store = 0;
 
 inline void restore_parameters()
 {
@@ -53,7 +58,7 @@ void save_parameters()
 // The LCD configs
 struct hd44780fw_conf lcd_conf;
 struct hd44780_l_conf lcd_low_conf;
-volatile uint8_t display_needs_refresh = 0;
+volatile uint8_t display_need_refresh = 0;
 
 /*
  *	The LCD desired structure during normal operation
@@ -109,7 +114,7 @@ inline void init_display()
 	hd44780fw_write(&lcd_conf, INTRO0, 0, HD44780FW_WR_CLEAR_BEFORE);
 	hd44780fw_write(&lcd_conf, INTRO1, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
 
-	display_needs_refresh = 1;
+	display_need_refresh = 1;
 }
 
 inline void init_analog_temp()
@@ -201,7 +206,7 @@ ISR(TIMER0_OVF_vect)
 #ifndef DEBUG
 	static uint8_t kbd_state_old = 0, kbd_state;
 #endif
-	static uint8_t needs_reaction = 0, reacted_state = 0;
+	static uint8_t need_reaction = 0, reacted_state = 0;
 
 	// Switches lower the pin state, so we use negative value
 	kbd_state = ~PIND & KEYS_ALL;
@@ -212,14 +217,14 @@ ISR(TIMER0_OVF_vect)
 	 *
 	 */
 	if ((kbd_state == kbd_state_old) && (kbd_state != reacted_state)) {
-		needs_reaction = 1;
+		need_reaction = 1;
 		reacted_state = kbd_state;
 	}
 
 	kbd_state_old = kbd_state;
 
 	// React to the keypad state
-	if (!needs_reaction) return;
+	if (!need_reaction) return;
 	if (kbd_state & KEY_EDIT) {
 		// this is not atomic, so we use a temporary var
 		uint8_t _edit_mode = edit_mode;
@@ -236,8 +241,9 @@ ISR(TIMER0_OVF_vect)
 		if ((edit_mode == EDIT_MAX) && (temp_max < MAX_VALID_TEMP)) temp_max++;
 	}
 
-	needs_reaction = 0;
-	display_needs_refresh = 1;
+	need_store = 1;
+	need_reaction = 0;
+	display_need_refresh = 1;
 }
 
 inline void refresh_display()
@@ -278,7 +284,7 @@ inline void refresh_display()
 	hd44780fw_write(&lcd_conf, itoa(last_adcval, buf, 10),
 			0x14, HD44780FW_WR_NO_CLEAR_BEFORE);
 #endif
-	display_needs_refresh = 0;
+	display_need_refresh = 0;
 	// Write the strings to the display
 	hd44780fw_write(&lcd_conf, HEADER, 0, HD44780FW_WR_NO_CLEAR_BEFORE);
 	hd44780fw_write(&lcd_conf, val_buf, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
@@ -319,7 +325,7 @@ inline void control_heating()
 		if (temp < temp_min) heating_state = 1;
 		else heating_state = 0;
 		turn_heating(heating_state);
-		save_parameters();
+		need_store = 1;
 	}
 }
 
@@ -340,9 +346,11 @@ int main()
 		}
 
 		// refresh when needed or every 64 cycles
-		if (display_needs_refresh || (lcx & 0x3f)) {
+		if (display_need_refresh || (lcx & 0x3f)) {
 			refresh_display();
 		}
+
+		if (need_store) save_parameters();
 	}
 	return 0;
 }
