@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <avr/interrupt.h>
+#include <avr/eeprom.h>
 #include <util/delay.h>
 
 #include <hd44780_low.h>
@@ -10,7 +11,7 @@
  * few seconds. For the heating we need very slow responsiveness, so the samples
  * will be gathered in a table and averaged.
  */
-#define		SAMPLE_BUFFER_SIZE	240		// 240B makes almost 1/4 of the RAM
+#define		SAMPLE_BUFFER_SIZE	120		// remember this chip has 1K only
 #define		INVALID_TEMP		-128	// mordor
 int8_t *samples;	// one byte per sample, will allocate later
 unsigned int samples_idx = 0;
@@ -21,7 +22,33 @@ volatile int last_adcval;
 
 #define		MIN_VALID_TEMP	0
 #define		MAX_VALID_TEMP	50
-uint8_t temp_min = 15, temp_max = 25;
+uint8_t temp_min = MIN_VALID_TEMP, temp_max = MAX_VALID_TEMP;
+uint8_t heating_state = 0;
+
+// the permanent storage of programmed temps and last state
+uint8_t EEMEM perm_temp_min = 15;
+uint8_t EEMEM perm_temp_max = 25;
+uint8_t EEMEM perm_heating_state = 0;
+
+inline void restore_parameters()
+{
+	cli();
+	eeprom_busy_wait();
+	temp_min = eeprom_read_byte(&perm_temp_min);
+	temp_max = eeprom_read_byte(&perm_temp_max);
+	heating_state = eeprom_read_byte(&perm_heating_state);
+	sei();
+}
+
+void save_parameters()
+{
+	cli();
+	eeprom_busy_wait();
+	eeprom_write_byte(&perm_temp_min, temp_min);
+	eeprom_write_byte(&perm_temp_max, temp_max);
+	eeprom_write_byte(&perm_heating_state, heating_state);
+	sei();
+}
 
 // The LCD configs
 struct hd44780fw_conf lcd_conf;
@@ -271,17 +298,45 @@ inline void init_keypad()
 	TIMSK |= (1 << TOIE0);
 }
 
+inline void turn_heating(uint8_t on)
+{
+	if (on) PORTB |= (1 << PB0);
+	else PORTB &= ~(1 << PB0);
+}
+
+inline void init_heating()
+{
+	DDRB |= (1 << PB0);
+	PORTB &= ~(1 << PB0);
+	turn_heating(heating_state);
+}
+
+inline void control_heating()
+{
+	int temp = get_avg_temp();
+	if (!buffer_filled) return;	// no balanced data yet
+	if ((temp < temp_min) || (temp > temp_max)) {
+		if (temp < temp_min) heating_state = 1;
+		else heating_state = 0;
+		turn_heating(heating_state);
+		save_parameters();
+	}
+}
+
 int main()
 {
 	init_display();
+	restore_parameters();
+	init_heating();
 	init_analog_temp();
 	init_keypad();
 	sei();
 	for (unsigned int lcx = 0;; lcx++) {
 		_delay_ms(50);
 		if (!(lcx & 7)) {
-			// read temp every 8 cycles
+			// read temp and update heating state every 8 cycles
 			read_temp();
+			control_heating();
 		}
 
 		// refresh when needed or every 64 cycles
