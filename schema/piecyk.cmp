@@ -1,4 +1,4 @@
-Cmp-Mod V01 Created by CvPcb (2013-may-18)-stable date = sob, 11 sty 2014, 09:19:49
+Cmp-Mod V01 Created by CvPcb (2013-may-18)-stable date = sob, 11 sty 2014, 23:31:08
 
 BeginCmp
 TimeStamp = /52BB0288;
@@ -64,9 +64,9 @@ IdModule  = R3;
 EndCmp
 
 BeginCmp
-TimeStamp = /52D0DFF4;
+TimeStamp = /52D1C5B5;
 Reference = Q1;
-ValeurCmp = PNP;
+ValeurCmp = NPN;
 IdModule  = TO92;
 EndCmp
 
@@ -99,6 +99,13 @@ IdModule  = R3;
 EndCmp
 
 BeginCmp
+TimeStamp = /52D1C7DB;
+Reference = R5;
+ValeurCmp = R;
+IdModule  = R3;
+EndCmp
+
+BeginCmp
 TimeStamp = /52BB1715;
 Reference = SW1;
 ValeurCmp = SW_edit;
@@ -115,7 +122,7 @@ EndCmp
 BeginCmp
 TimeStamp = /52BB1733;
 Reference = SW3;
-ValeurCmp = SW_down;
+ValeurCmp = SW_up;
 IdModule  = SW_PUSH;
 EndCmp
 
