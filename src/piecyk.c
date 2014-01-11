@@ -16,22 +16,22 @@
 #else
 #define		SAMPLE_BUFFER_SIZE	120		// remember this chip has 1K only
 #endif
-#define		INVALID_TEMP		-128	// mordor
-int8_t *samples;	// one byte per sample, will allocate later
+#define		INVALID_TEMP		-(300 << 2)	// mordor
+int16_t *samples;		// keep full 10-bit sample
 unsigned int samples_idx = 0;
 uint8_t buffer_filled = 0;
-#ifdef DEBUG
-volatile int last_adcval;
-#endif
 
+/* WARNING: all temperatures are measured in 0,5C units, 9 bit */
 #define		MIN_VALID_TEMP	0
-#define		MAX_VALID_TEMP	50
-uint8_t temp_min = 15, temp_max = 25;
+#define		MAX_VALID_TEMP	(50 << 1)
+#define		DEFAULT_MIN		(17 << 1) + 1
+#define		DEFAULT_MAX		(20 << 1) + 1
+uint16_t temp_min = DEFAULT_MIN, temp_max = DEFAULT_MAX;
 uint8_t heating_state = 0;
 
 // the permanent storage of programmed temps and last state
-uint8_t EEMEM perm_temp_min = 15;
-uint8_t EEMEM perm_temp_max = 25;
+uint16_t EEMEM perm_temp_min = DEFAULT_MIN;
+uint16_t EEMEM perm_temp_max = DEFAULT_MAX;
 uint8_t EEMEM perm_heating_state = 1;
 uint8_t need_store = 0;
 
@@ -39,8 +39,8 @@ inline void restore_parameters()
 {
 	cli();
 	eeprom_busy_wait();
-	temp_min = eeprom_read_byte(&perm_temp_min);
-	temp_max = eeprom_read_byte(&perm_temp_max);
+	temp_min = eeprom_read_word(&perm_temp_min);
+	temp_max = eeprom_read_word(&perm_temp_max);
 	heating_state = eeprom_read_byte(&perm_heating_state);
 	sei();
 }
@@ -49,8 +49,8 @@ void save_parameters()
 {
 	cli();
 	eeprom_busy_wait();
-	eeprom_write_byte(&perm_temp_min, temp_min);
-	eeprom_write_byte(&perm_temp_max, temp_max);
+	eeprom_write_word(&perm_temp_min, temp_min);
+	eeprom_write_word(&perm_temp_max, temp_max);
 	eeprom_write_byte(&perm_heating_state, heating_state);
 	sei();
 }
@@ -64,23 +64,21 @@ volatile uint8_t display_need_refresh = 0;
  *	The LCD desired structure during normal operation
  *	   0123456789abcdef
  *
- *	0  Temp   Min   Max
- *	1   20C  *20C  *20C
+ *	0  Temp= *Max 21,0C
+ *	1  20,5C *Min 20,0C
  *
- *	         ^-----^-- indicates the value is being edited
+ *	         ^-------- indicates the value is being edited
  *
  */
-#define		ROW2			0x10
-#define		GATHER_X		0x00
-#define		CUR_VAL_X		0x01
-#define		MIN_EDIT_X		0x06
-#define		MIN_VAL_X		0x07
-#define		MAX_EDIT_X		0x0c
-#define		MAX_VAL_X		0x0d
+#define		GATHER_IDX		0x04
+#define		CUR_VAL_IDX		0x10
+#define		MIN_EDIT_IDX	0x16
+#define		MIN_VAL_IDX		0x1b
+#define		MAX_EDIT_IDX	0x06
+#define		MAX_VAL_IDX		0x0b
 
-#define		HEADER			"Temp   Min   Max"
-#define		VALUES			"   C     C     C"
-#define		INTRO0			"piecyk v0.1"
+#define		TEMPLATE		"Temp   Max     C    C  Min     C"
+#define		INTRO0			"piecyk v0.2"
 #define		INTRO1			"zaraz grzejemy"
 
 inline void init_display()
@@ -134,7 +132,7 @@ inline void init_analog_temp()
 	DDRB = ~(1 << PC5);
 	PORTC |= ~(1 << PC5);
 	// create buffer for samples and empty it
-	samples = malloc(SAMPLE_BUFFER_SIZE * sizeof(int8_t));
+	samples = malloc(SAMPLE_BUFFER_SIZE * sizeof(int16_t));
 	for (unsigned int i = 0; i < SAMPLE_BUFFER_SIZE; i++) *(samples + i) = INVALID_TEMP;
 }
 
@@ -158,22 +156,21 @@ inline void read_temp()
 	 * LM35 returns linear function of temperature in Celsius:
 	 * Vout = 0V + (t * 0.01V)
 	 * As we have 2.56V as Aref and 1024 values of 10-bit resolution,
-	 * The only thing we need is to divide the result by 4 with rounding.
+	 * the maximum resolution is 0,25C.
+	 *
+	 * We keep full sample.
 	 *
 	 */
-	*(samples + samples_idx++) = (int8_t)((adcval >> 2) + ((adcval & 2) >> 1));
-#ifdef DEBUG
-	last_adcval = adcval;
-#endif
-
+	*(samples + samples_idx++) = adcval;
 	// cycle buffer
 	if (samples_idx >= SAMPLE_BUFFER_SIZE) samples_idx = 0;
 }
 
-int get_avg_temp()
+uint16_t get_avg_temp()
 {
 	unsigned int counted = SAMPLE_BUFFER_SIZE;
-	long sum = 0;
+	uint32_t sum = 0;
+	uint16_t avg;
 
 	buffer_filled = 1;
 	for (unsigned int i = 0; i < SAMPLE_BUFFER_SIZE; i++) {
@@ -184,7 +181,11 @@ int get_avg_temp()
 		}
 		sum += *(samples + i);
 	}
-	return sum / counted;
+	avg = sum / counted;
+	/* The samples are 10-bit integers in 0,25C units.
+	 * We use 9-bit integers in 0,5C units as they seem more user-friendly.
+	 */
+	return (avg >> 1) + (avg & 1);
 }
 
 #define		KEY_EDIT	(1 << PD4)
@@ -193,19 +194,14 @@ int get_avg_temp()
 #define		KEYS_ALL	(KEY_EDIT | KEY_DOWN | KEY_UP)
 
 #define		EDIT_NONE		0
-#define		EDIT_MIN		1
-#define		EDIT_MAX		2
+#define		EDIT_MAX		1
+#define		EDIT_MIN		2
 #define		EDIT_INVALID	3
 volatile uint8_t edit_mode = EDIT_NONE;
-#ifdef DEBUG
-volatile uint8_t kbd_state_old = 0, kbd_state;
-#endif
 
 ISR(TIMER0_OVF_vect)
 {
-#ifndef DEBUG
-	static uint8_t kbd_state_old = 0, kbd_state;
-#endif
+	static uint8_t kbd_state, kbd_state_old = 0;
 	static uint8_t need_reaction = 0, reacted_state = 0;
 
 	// Switches lower the pin state, so we use negative value
@@ -246,50 +242,48 @@ ISR(TIMER0_OVF_vect)
 	display_need_refresh = 1;
 }
 
+void temptoa(uint16_t temp, char *rbuf)
+{
+	/* Converts 9-bit temp to string. Does not terminate the string with \0,
+	 * allowing simple pasting into the template. */
+	char *buf = malloc(4);
+	size_t s = 0;
+
+	itoa((temp >> 1), buf, 10);
+	s = strlen(buf);
+	memcpy(rbuf + (2-s), buf, s);
+	*(rbuf + s) = ',';
+	if (temp & 1) *(rbuf + s + 1) = '5';
+	else *(rbuf + s + 1) = '0';
+	free(buf);
+}
+
 inline void refresh_display()
 {
-	char *val_buf = malloc(0x11), *buf = malloc(4);
-	size_t s = 0;
-	memcpy(val_buf, VALUES, 0x11);	// add terminal \0
+	char *display_buf = malloc(0x21), *buf = malloc(4);
+
+	memcpy(display_buf, TEMPLATE, 0x21);	// add terminal \0
 	// Update values
 	if (buffer_filled)
-		*(val_buf + GATHER_X) =  ' ';
+		*(display_buf + GATHER_IDX) =  ' ';
 	else
-		*(val_buf + GATHER_X) =  '=';
-	itoa(get_avg_temp(), buf, 10);
-	s = strlen(buf);
-	memcpy(val_buf + CUR_VAL_X + (2-s), buf, s);
-	itoa(temp_min, buf, 10);
-	s = strlen(buf);
-	memcpy(val_buf + MIN_VAL_X + (2-s), buf, s);
-	itoa(temp_max, buf, 10);
-	s = strlen(buf);
-	memcpy(val_buf + MAX_VAL_X + (2-s), buf, s);
+		*(display_buf + GATHER_IDX) =  '=';
+	temptoa(get_avg_temp(), display_buf + CUR_VAL_IDX);
+	temptoa(temp_min, display_buf + MIN_VAL_IDX);
+	temptoa(temp_max, display_buf + MAX_VAL_IDX);
 	if (edit_mode == EDIT_MIN)
-		*(val_buf + MIN_EDIT_X) = '*';
+		*(display_buf + MIN_EDIT_IDX) = '*';
 	else
-		*(val_buf + MIN_EDIT_X) = ' ';
+		*(display_buf + MIN_EDIT_IDX) = ' ';
 	if (edit_mode == EDIT_MAX)
-		*(val_buf + MAX_EDIT_X) = '*';
+		*(display_buf + MAX_EDIT_IDX) = '*';
 	else
-		*(val_buf + MAX_EDIT_X) = ' ';
-#ifdef DEBUG
-	// Write keypad state to the display, just after "Min"
-	hd44780fw_write(&lcd_conf, itoa(kbd_state, buf, 10),
-			0xb, HD44780FW_WR_NO_CLEAR_BEFORE);
-	// Write the samples counter to the display, just after "Temp"
-	hd44780fw_write(&lcd_conf, itoa(samples_idx, buf, 10),
-			4, HD44780FW_WR_NO_CLEAR_BEFORE);
-	// Write the last sample to the display, just after current temp
-	hd44780fw_write(&lcd_conf, itoa(last_adcval, buf, 10),
-			0x14, HD44780FW_WR_NO_CLEAR_BEFORE);
-#endif
+		*(display_buf + MAX_EDIT_IDX) = ' ';
 	display_need_refresh = 0;
-	// Write the strings to the display
-	hd44780fw_write(&lcd_conf, HEADER, 0, HD44780FW_WR_NO_CLEAR_BEFORE);
-	hd44780fw_write(&lcd_conf, val_buf, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
+	// Write the string to the display
+	hd44780fw_write(&lcd_conf, display_buf, 0, HD44780FW_WR_NO_CLEAR_BEFORE);
 	free(buf);
-	free(val_buf);
+	free(display_buf);
 }
 
 inline void init_keypad()
@@ -306,19 +300,25 @@ inline void init_keypad()
 
 inline void turn_heating(uint8_t on)
 {
-	if (on) PORTD &= ~(1 << PD0);
-	else PORTD |= (1 << PD0);
+	// Pin 0 is control, pin 1 is diode.
+	if (on) {
+		PORTD &= ~(1 << PD0);
+		PORTD |= (1 << PD1);
+	} else {
+		PORTD |= (1 << PD0);
+		PORTD &= ~(1 << PD1);
+	}
 }
 
 inline void init_heating()
 {
-	DDRD |= (1 << PD0);
+	DDRD |= (1 << PD0) | (1 << PD1);
 	turn_heating(heating_state);
 }
 
 inline void control_heating()
 {
-	int temp = get_avg_temp();
+	uint16_t temp = get_avg_temp();
 	if (!buffer_filled) return;	// no balanced data yet
 	if ((temp < temp_min) || (temp > temp_max)) {
 		if (temp < temp_min) heating_state = 1;
