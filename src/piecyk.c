@@ -26,7 +26,7 @@ uint8_t buffer_filled = 0;
 #define		MAX_VALID_TEMP	(50 << 1)
 #define		DEFAULT_MIN		(17 << 1) + 1
 #define		DEFAULT_MAX		(20 << 1) + 1
-uint16_t temp_min = DEFAULT_MIN, temp_max = DEFAULT_MAX;
+uint16_t volatile temp_min = DEFAULT_MIN, temp_max = DEFAULT_MAX;
 uint8_t heating_state = 0;
 
 // the permanent storage of programmed temps and last state
