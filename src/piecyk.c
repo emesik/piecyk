@@ -2,6 +2,7 @@
 #include <string.h>
 #include <avr/interrupt.h>
 #include <avr/eeprom.h>
+#include <avr/pgmspace.h>
 #include <util/delay.h>
 
 #include <hd44780_low.h>
@@ -70,6 +71,7 @@ volatile uint8_t display_need_refresh = 0;
  *	         ^-------- indicates the value is being edited
  *
  */
+#define		DISPLAY_SIZE	0x20
 #define		GATHER_IDX		0x04
 #define		CUR_VAL_IDX		0x10
 #define		MIN_EDIT_IDX	0x16
@@ -77,12 +79,13 @@ volatile uint8_t display_need_refresh = 0;
 #define		MAX_EDIT_IDX	0x06
 #define		MAX_VAL_IDX		0x0b
 
-#define		TEMPLATE		"Temp   Max     C    C  Min     C"
-#define		INTRO0			"piecyk v0.2"
-#define		INTRO1			"zaraz grzejemy"
+const PROGMEM char template[DISPLAY_SIZE]	= "Temp   Max     C    C  Min     C";
+const PROGMEM char intro[DISPLAY_SIZE]		= "piecyk v0.3     zaraz grzejemy! ";
 
 inline void init_display()
 {
+	char *display_buf = malloc(DISPLAY_SIZE + 1);
+
 	// pins connected to PORTB
 	DDRB |= 1 | (1 << 1) | (1 << 2) | (1 << 7);
 	lcd_low_conf.rs_i = 2;
@@ -109,8 +112,11 @@ inline void init_display()
 	lcd_conf.lines = HD44780_L_FS_N_DUAL;
 
 	hd44780fw_init(&lcd_conf);
-	hd44780fw_write(&lcd_conf, INTRO0, 0, HD44780FW_WR_CLEAR_BEFORE);
-	hd44780fw_write(&lcd_conf, INTRO1, 0x10, HD44780FW_WR_NO_CLEAR_BEFORE);
+
+	for (int i = 0; i < DISPLAY_SIZE; i++)
+		*(display_buf + i) = pgm_read_byte(&intro + i);
+	*(display_buf + DISPLAY_SIZE) = '\0';
+	hd44780fw_write(&lcd_conf, display_buf, 0, HD44780FW_WR_CLEAR_BEFORE);
 
 	display_need_refresh = 1;
 }
@@ -258,11 +264,16 @@ void temptoa(uint16_t temp, char *rbuf)
 	free(buf);
 }
 
-inline void refresh_display()
+void refresh_display()
 {
-	char *display_buf = malloc(0x21), *buf = malloc(4);
+	// allocate once and for all
+	static char *display_buf = NULL, *buf = NULL;
+	if (display_buf == NULL) display_buf = malloc(DISPLAY_SIZE + 1);
+	if (buf == NULL) buf = malloc(4);
 
-	memcpy(display_buf, TEMPLATE, 0x21);	// add terminal \0
+	for (int i = 0; i < DISPLAY_SIZE; i++)
+		*(display_buf + i) = pgm_read_byte(&template + i);
+	*(display_buf + DISPLAY_SIZE) = '\0';
 	// Update values
 	if (buffer_filled)
 		*(display_buf + GATHER_IDX) =  ' ';
@@ -289,7 +300,7 @@ inline void refresh_display()
 inline void init_keypad()
 {
 	DDRD &= ~KEYS_ALL;
-	PORTD |= KEYS_ALL;
+	PORTD |= KEYS_ALL;	// pull-up
 
 	// use internal clock, 256 prescaler
 	TCCR0 |= (1 << CS02);
