@@ -1,12 +1,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <avr/interrupt.h>
+#include <avr/io.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>
 
 #include <hd44780_low.h>
 #include <hd44780fw.h>
+
+FUSES =
+{
+	.low = LFUSE_DEFAULT & FUSE_BODLEVEL & FUSE_BODEN,
+	.high = HFUSE_DEFAULT & FUSE_EESAVE,
+	/* WARNING: These settings cannot be written from a .hex file without external tools.
+	 * Fusebits are redefined in Makefile and that setting is the working one.
+	 */
+};
 
 /* The sensor shows some kind of variarion, jumping even a full centigrade every
  * few seconds. For the heating we need very slow responsiveness, so the samples
