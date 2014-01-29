@@ -89,8 +89,8 @@ volatile uint8_t display_need_refresh = 0;
 #define		MAX_EDIT_IDX	0x06
 #define		MAX_VAL_IDX		0x0b
 
-const PROGMEM char template[DISPLAY_SIZE]	= "Temp   Max     C    C  Min     C";
-const PROGMEM char intro[DISPLAY_SIZE]		= "piecyk v0.3     zaraz grzejemy! ";
+const char template[DISPLAY_SIZE] PROGMEM	= "Temp   Max     C    C  Min     C";
+const char intro[DISPLAY_SIZE] PROGMEM		= "piecyk v0.3     zaraz grzejemy! ";
 
 inline void init_display()
 {
@@ -123,8 +123,7 @@ inline void init_display()
 
 	hd44780fw_init(&lcd_conf);
 
-	for (int i = 0; i < DISPLAY_SIZE; i++)
-		*(display_buf + i) = pgm_read_byte(&intro + i);
+	memcpy_P(display_buf, &intro, DISPLAY_SIZE);
 	*(display_buf + DISPLAY_SIZE) = '\0';
 	hd44780fw_write(&lcd_conf, display_buf, 0, HD44780FW_WR_CLEAR_BEFORE);
 
@@ -282,8 +281,7 @@ void refresh_display()
 	if (display_buf == NULL) display_buf = malloc(DISPLAY_SIZE + 1);
 	if (buf == NULL) buf = malloc(4);
 
-	for (int i = 0; i < DISPLAY_SIZE; i++)
-		*(display_buf + i) = pgm_read_byte(&template + i);
+	memcpy_P(display_buf, &template, DISPLAY_SIZE);
 	*(display_buf + DISPLAY_SIZE) = '\0';
 	// Update values
 	if (buffer_filled)
