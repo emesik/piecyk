@@ -129,6 +129,7 @@ inline void init_display()
 	hd44780fw_write(&lcd_conf, display_buf, 0, HD44780FW_WR_CLEAR_BEFORE);
 
 	display_need_refresh = 1;
+	free(display_buf);
 }
 
 inline void init_analog_temp()
@@ -303,8 +304,6 @@ void refresh_display()
 	display_need_refresh = 0;
 	// Write the string to the display
 	hd44780fw_write(&lcd_conf, display_buf, 0, HD44780FW_WR_NO_CLEAR_BEFORE);
-	free(buf);
-	free(display_buf);
 }
 
 inline void init_keypad()
