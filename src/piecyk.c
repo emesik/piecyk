@@ -11,7 +11,7 @@
 
 FUSES =
 {
-	.low = LFUSE_DEFAULT & FUSE_BODLEVEL & FUSE_BODEN,
+	.low = FUSE_BODLEVEL & FUSE_BODEN & FUSE_SUT0 & FUSE_CKSEL3 & FUSE_CKSEL2 & FUSE_CKSEL1,
 	.high = HFUSE_DEFAULT & FUSE_EESAVE,
 	/* WARNING: These settings cannot be written from a .hex file without external tools.
 	 * Fusebits are redefined in Makefile and that setting is the working one.

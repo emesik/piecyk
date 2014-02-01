@@ -3,7 +3,7 @@ NAME=piecyk
 MCU=atmega8
 F_CPU=8000000UL
 FUSE_HIGH=0xd1
-FUSE_LOW=0x21
+FUSE_LOW=0x24
 PROGRAMMER_ID=usbasp
 
 CC=avr-gcc
