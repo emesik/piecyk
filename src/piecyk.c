@@ -354,7 +354,7 @@ int main()
 	init_analog_temp();
 	init_keypad();
 	sei();
-	_delay_ms(3000);	// let the intro be visible but already gather data
+	_delay_ms(1000);	// let the intro be visible but already gather data
 	for (unsigned int lcx = 0;; lcx++) {
 		_delay_ms(31);		// ~32Hz
 		if (!(lcx & 0x1f)) {
