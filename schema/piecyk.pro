@@ -1,20 +1,25 @@
-update=nie, 12 sty 2014, 01:02:00
+update=pią, 7 lis 2014, 13:29:33
 last_client=eeschema
+[cvpcb]
+version=1
+NetIExt=net
+[cvpcb/libraries]
+EquName1=devcms
 [pcbnew]
 version=1
-LastNetListRead=
+LastNetListRead=piecyk.net
 UseCmpFile=1
-PadDrill="    0,600000"
-PadDrillOvalY="    0,600000"
-PadSizeH="    1,000000"
-PadSizeV="    1,000000"
-PcbTextSizeV="    1,000000"
-PcbTextSizeH="    1,000000"
+PadDrill="    0,000000"
+PadDrillOvalY="    0,000000"
+PadSizeH="    0,701040"
+PadSizeV="    1,600200"
+PcbTextSizeV="    1,500000"
+PcbTextSizeH="    1,500000"
 PcbTextThickness="    0,300000"
-ModuleTextSizeV="    1,000000"
-ModuleTextSizeH="    1,000000"
+ModuleTextSizeV="    1,500000"
+ModuleTextSizeH="    1,500000"
 ModuleTextSizeThickness="    0,150000"
-SolderMaskClearance="    0,000000"
+SolderMaskClearance="    0,200000"
 SolderMaskMinWidth="    0,000000"
 DrawSegmentWidth="    0,200000"
 BoardOutlineThickness="    0,150000"
@@ -37,6 +42,7 @@ LibName13=led
 LibName14=dip_sockets
 LibName15=pga_sockets
 LibName16=valves
+LibName17=78l05
 [eeschema]
 version=1
 LibDir=/home/emes/src/kicad-libs
@@ -76,5 +82,4 @@ LibName27=opto
 LibName28=contrib
 LibName29=valves
 LibName30=atmel
-LibName31=display_lcd
-LibName32=capteurs
+LibName31=lm35
