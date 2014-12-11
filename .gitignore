@@ -7,4 +7,5 @@
 *.hex
 *.map
 *.bak
+*-bak
 src/*.lib

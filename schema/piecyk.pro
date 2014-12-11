@@ -1,5 +1,5 @@
-update=pią, 7 lis 2014, 13:29:33
-last_client=eeschema
+update=czw, 11 gru 2014, 18:42:40
+last_client=kicad
 [cvpcb]
 version=1
 NetIExt=net
@@ -45,12 +45,7 @@ LibName16=valves
 LibName17=78l05
 [eeschema]
 version=1
-LibDir=/home/emes/src/kicad-libs
-NetFmtName=PcbnewAdvanced
-RptD_X=0
-RptD_Y=100
-RptLab=1
-LabSize=60
+LibDir=/home/emes/devel/kicad/kicad-library/library
 [eeschema/libraries]
 LibName1=power
 LibName2=device

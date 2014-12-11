@@ -90,7 +90,7 @@ volatile uint8_t display_need_refresh = 0;
 #define		MAX_VAL_IDX		0x0b
 
 const char template[DISPLAY_SIZE] PROGMEM	= "Temp   Max     C    C  Min     C";
-const char intro[DISPLAY_SIZE] PROGMEM		= "piecyk v0.9     zaraz grzejemy! ";
+const char intro[DISPLAY_SIZE] PROGMEM		= "piecyk v1.0     zaraz grzejemy! ";
 const char fractions[4] PROGMEM = "0358";
 
 inline void init_display()
@@ -98,21 +98,28 @@ inline void init_display()
 	char *display_buf = malloc(DISPLAY_SIZE + 1);
 
 	// pins connected to PORTB
-	DDRB |= 1 | (1 << 1) | (1 << 2) | (1 << 7);
-	lcd_low_conf.rs_i = 2;
-	lcd_low_conf.rw_i = 1;
-	lcd_low_conf.en_i = 0;
-	lcd_low_conf.db4_i = 7;
-	lcd_low_conf.rs_port = lcd_low_conf.rw_port =
-		lcd_low_conf.en_port = lcd_low_conf.db4_port = &PORTB;
+	DDRB |= (1 << PB7) | (1 << PB6) | (1 << PB1) | (1 << PB0);
+	lcd_low_conf.rs_i = 6;
+	lcd_low_conf.rw_i = 7;
+	lcd_low_conf.db6_i = 0;
+	lcd_low_conf.db7_i = 1;
+
+	lcd_low_conf.rs_port =
+	lcd_low_conf.rw_port =
+	lcd_low_conf.db6_port =
+	lcd_low_conf.db7_port =
+	&PORTB;
 
 	// pins connected to PORTD
-	DDRD |= (1 << 5) | (1 << 6) | (1 << 7);
-	lcd_low_conf.db5_i = 5;
-	lcd_low_conf.db6_i = 6;
-	lcd_low_conf.db7_i = 7;
-	lcd_low_conf.db5_port = lcd_low_conf.db6_port =
-		lcd_low_conf.db7_port = &PORTD;
+	DDRD |= (1 << PD5) | (1 << PD6) | (1 << PD7);
+	lcd_low_conf.en_i = 5;
+	lcd_low_conf.db4_i = 6;
+	lcd_low_conf.db5_i = 7;
+
+	lcd_low_conf.en_port =
+	lcd_low_conf.db4_port =
+	lcd_low_conf.db5_port =
+	&PORTD;
 
 	lcd_low_conf.line1_base_addr = 0x00;
 	lcd_low_conf.line2_base_addr = 0x40;
@@ -123,6 +130,7 @@ inline void init_display()
 	lcd_conf.lines = HD44780_L_FS_N_DUAL;
 
 	hd44780fw_init(&lcd_conf);
+	hd44780_l_disp(&lcd_low_conf, HD44780_L_DISP_D_ON, HD44780_L_DISP_C_OFF, HD44780_L_DISP_B_OFF);
 
 	memcpy_P(display_buf, &intro, DISPLAY_SIZE);
 	*(display_buf + DISPLAY_SIZE) = '\0';
@@ -200,9 +208,9 @@ uint16_t get_avg_temp()
 	return sum / counted;
 }
 
-#define		KEY_DOWN	(1 << PD2)
-#define		KEY_UP		(1 << PD3)
-#define		KEY_EDIT	(1 << PD4)
+#define		KEY_DOWN	(1 << PD3)
+#define		KEY_UP		(1 << PD2)
+#define		KEY_EDIT	(1 << PD1)
 #define		KEYS_ALL	(KEY_EDIT | KEY_DOWN | KEY_UP)
 
 #define		EDIT_NONE		0
