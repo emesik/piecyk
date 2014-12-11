@@ -93,9 +93,28 @@ const char template[DISPLAY_SIZE] PROGMEM	= "Temp   Max     C    C  Min     C";
 const char intro[DISPLAY_SIZE] PROGMEM		= "piecyk v1.0     zaraz grzejemy! ";
 const char fractions[4] PROGMEM = "0358";
 
+#define		MIN_BRIGHTNESS	0x0080
+#define		MAX_BRIGHTNESS	0x0320
+#define		DIM_STEP_UP		16
+#define		DIM_STEP_DN		3
+uint16_t	brightness = MIN_BRIGHTNESS;
+#define		IDLE_TOP		0x60
+uint16_t	idle = IDLE_TOP;
+
 inline void init_display()
 {
 	char *display_buf = malloc(DISPLAY_SIZE + 1);
+
+	// init backlight PWM
+	DDRB |= (1 << PB1);
+	// phase-correct 10bit PWM, OC1B output
+	TCCR1A = (1 << COM1B1) | (1 << WGM10) | (1 << WGM11);
+	// /8 prescaler
+	TCCR1B = (1 << CS11);
+	// enable overflow interrupt
+	TIMSK = (1 << TOIE1);
+	OCR1BH = (uint8_t)(brightness >> 8);
+	OCR1BL = (uint8_t)(brightness & 0xff);
 
 	// pins connected to PORTB
 	DDRB |= (1 << PB7) | (1 << PB6) | (1 << PB1) | (1 << PB0);
@@ -260,6 +279,21 @@ ISR(TIMER0_OVF_vect)
 	need_store = 1;
 	need_reaction = 0;
 	display_need_refresh = 1;
+
+	idle = IDLE_TOP;
+	brightness = MAX_BRIGHTNESS;
+}
+
+ISR(TIMER1_OVF_vect) {
+	uint16_t cur_bright;
+
+	// increase/decrease duty cycle to target level
+	cur_bright = OCR1BL;
+	cur_bright |= (OCR1BH << 8);
+	if (cur_bright < brightness - DIM_STEP_UP) cur_bright += DIM_STEP_UP;
+	if (cur_bright > brightness + DIM_STEP_DN) cur_bright -= DIM_STEP_DN;
+	OCR1BH = (uint8_t)(cur_bright >> 8);
+	OCR1BL = (uint8_t)(cur_bright & 0xff);
 }
 
 void temptoa(uint16_t temp, char *rbuf)
@@ -334,6 +368,9 @@ inline void turn_heating(uint8_t on)
 		PORTD |= (1 << PD0);
 		PORTD &= ~(1 << PD1);
 	}
+
+	idle = IDLE_TOP;
+	brightness = MAX_BRIGHTNESS;
 }
 
 inline void init_heating()
@@ -377,6 +414,9 @@ int main()
 		}
 
 		if (need_store) save_parameters();
+
+		if (idle == 0) brightness = MIN_BRIGHTNESS;
+		else idle--;
 	}
 	return 0;
 }
