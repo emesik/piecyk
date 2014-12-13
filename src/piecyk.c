@@ -360,13 +360,10 @@ inline void init_keypad()
 
 inline void turn_heating(uint8_t on)
 {
-	// Pin 0 is control, pin 1 is diode.
 	if (on) {
-		PORTD &= ~(1 << PD0);
-		PORTD |= (1 << PD1);
-	} else {
 		PORTD |= (1 << PD0);
-		PORTD &= ~(1 << PD1);
+	} else {
+		PORTD &= ~(1 << PD0);
 	}
 
 	idle = IDLE_TOP;
