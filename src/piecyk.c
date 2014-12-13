@@ -167,14 +167,14 @@ inline void init_analog_temp()
 	 * Initialize ADMUX register with new value
 	 * REFS0 = 1, REFS1 = 1:	use Aref
 	 * ADLAR = 0:				10-bit resolution
-	 * MUX = 5:					ADC5 (PC5) is the input
+	 * MUX = 0:					ADC0 (PC0) is the input
 	 */
-	ADMUX = (1 << REFS0) | (1 << REFS1) | (1 << MUX2) | (1 << MUX0);
-	// enable ADC, set 128 prescaler for 8MHz mode
+	ADMUX = (1 << REFS0) | (1 << REFS1);
+	// enable ADC, set 128 prescaler
 	ADCSRA |= (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 	// set other pins as output and set high state
-	DDRB = ~(1 << PC5);
-	PORTC |= ~(1 << PC5);
+	DDRC = ~(1 << PC0);
+	PORTC |= ~(1 << PC0);
 	// create buffer for samples and empty it
 	samples = malloc(SAMPLE_BUFFER_SIZE * sizeof(int16_t));
 	for (unsigned int i = 0; i < SAMPLE_BUFFER_SIZE; i++) *(samples + i) = INVALID_TEMP;
