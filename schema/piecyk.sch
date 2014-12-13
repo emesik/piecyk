@@ -466,11 +466,11 @@ Wire Wire Line
 	4150 5500 5150 5500
 Wire Wire Line
 	4150 5600 5150 5600
-Text Label 4350 5400 0    60   ~ 0
-K_edit
-Text Label 4350 5500 0    60   ~ 0
-K_up
 Text Label 4350 5600 0    60   ~ 0
+K_edit
+Text Label 4350 5400 0    60   ~ 0
+K_up
+Text Label 4350 5500 0    60   ~ 0
 K_dn
 Wire Wire Line
 	5350 7450 5600 7450

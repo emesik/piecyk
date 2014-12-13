@@ -227,9 +227,9 @@ uint16_t get_avg_temp()
 	return sum / counted;
 }
 
-#define		KEY_DOWN	(1 << PD3)
-#define		KEY_UP		(1 << PD2)
-#define		KEY_EDIT	(1 << PD1)
+#define		KEY_DOWN	(1 << PD2)
+#define		KEY_UP		(1 << PD1)
+#define		KEY_EDIT	(1 << PD3)
 #define		KEYS_ALL	(KEY_EDIT | KEY_DOWN | KEY_UP)
 
 #define		EDIT_NONE		0
