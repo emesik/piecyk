@@ -1,4 +1,4 @@
-update=czw, 11 gru 2014, 18:42:40
+update=sob, 13 gru 2014, 07:48:22
 last_client=kicad
 [cvpcb]
 version=1
@@ -77,4 +77,3 @@ LibName27=opto
 LibName28=contrib
 LibName29=valves
 LibName30=atmel
-LibName31=lm35
