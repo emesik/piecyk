@@ -106,7 +106,7 @@ inline void init_display()
 	char *display_buf = malloc(DISPLAY_SIZE + 1);
 
 	// init backlight PWM
-	DDRB |= (1 << PB1);
+	DDRB |= (1 << PB2);
 	// phase-correct 10bit PWM, OC1B output
 	TCCR1A = (1 << COM1B1) | (1 << WGM10) | (1 << WGM11);
 	// /8 prescaler
