@@ -361,9 +361,9 @@ inline void init_keypad()
 inline void turn_heating(uint8_t on)
 {
 	if (on) {
-		PORTD |= (1 << PD0);
-	} else {
 		PORTD &= ~(1 << PD0);
+	} else {
+		PORTD |= (1 << PD0);
 	}
 
 	idle = IDLE_TOP;
@@ -372,7 +372,7 @@ inline void turn_heating(uint8_t on)
 
 inline void init_heating()
 {
-	DDRD |= (1 << PD0) | (1 << PD1);
+	DDRD |= (1 << PD0);
 	turn_heating(heating_state);
 }
 
@@ -380,9 +380,12 @@ inline void control_heating()
 {
 	uint16_t temp = get_avg_temp();
 	if (!buffer_filled) return;	// no balanced data yet
-	if ((temp < temp_min) || (temp > temp_max)) {
-		if (temp < temp_min) heating_state = 1;
-		else heating_state = 0;
+	if ((temp < temp_min) && heating_state == 0) {
+		heating_state = 1;
+		turn_heating(heating_state);
+		need_store = 1;
+	} else if ((temp > temp_max) && heating_state == 1) {
+		heating_state = 0;
 		turn_heating(heating_state);
 		need_store = 1;
 	}
