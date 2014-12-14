@@ -93,8 +93,8 @@ const char template[DISPLAY_SIZE] PROGMEM	= "Temp   Max     C    C  Min     C";
 const char intro[DISPLAY_SIZE] PROGMEM		= "piecyk v1.0     zaraz grzejemy! ";
 const char fractions[4] PROGMEM = "0358";
 
-#define		MIN_BRIGHTNESS	0x0080
-#define		MAX_BRIGHTNESS	0x0320
+#define		MIN_BRIGHTNESS	0x0060
+#define		MAX_BRIGHTNESS	0x0300
 #define		DIM_STEP_UP		16
 #define		DIM_STEP_DN		3
 uint16_t	brightness = MIN_BRIGHTNESS;

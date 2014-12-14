@@ -991,4 +991,23 @@ F 3 "" H 5700 3100 60  0000 C CNN
 	1    5700 2850
 	0    -1   1    0   
 $EndComp
+$Comp
+L R R8
+U 1 1 548D650C
+P 7200 1550
+F 0 "R8" V 7280 1550 40  0000 C CNN
+F 1 "10k" V 7207 1551 40  0000 C CNN
+F 2 "Resistors_SMD:R_0805_HandSoldering" V 7130 1550 30  0001 C CNN
+F 3 "" H 7200 1550 30  0000 C CNN
+	1    7200 1550
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	7450 1550 7950 1550
+Connection ~ 7950 1550
+Wire Wire Line
+	6950 1550 6850 1550
+Wire Wire Line
+	6850 1550 6850 1250
+Connection ~ 6850 1250
 $EndSCHEMATC
